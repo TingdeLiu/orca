@@ -78,6 +78,7 @@ orca linear team list [--workspace <id>|all] [--json]
 orca linear team members --team <key|id> [--workspace <id>] [--json]
 orca linear team states --team <key|id> [--workspace <id>] [--json]
 orca linear team labels --team <key|id> [--workspace <id>] [--json]
+orca linear project list [--query <text>] [--limit <n>] [--workspace <id>|all] [--json]
 orca linear list [--filter assigned|created|all|completed|open] [--team <key|id>] [--limit <n>] [--workspace <id>|all] [--json]
 orca linear status set [<id>] [--current] --to <state> [--workspace <id>] [--json]
 orca linear assignee set [<id>] [--current] (--me | --to-id <userId>) [--workspace <id>] [--json]
@@ -93,21 +94,22 @@ orca linear label remove [<id>] [--current] --label <labelId-or-exact-name>... [
 orca linear label set [<id>] [--current] --label <labelId-or-exact-name>... [--workspace <id>] [--json]
 orca linear comment add [<id>] [--current] (--body <text> | --body-file <path|->) [--reply-to <commentId>] [--write-id <uuid>] [--workspace <id>] [--json]
 orca linear attach [<id>] [--current] --url <url> [--title <title>] [--write-id <uuid>] [--workspace <id>] [--json]
-orca linear create --title <title> [--body <text> | --body-file <path|->] [--team <key|id>] [--state <stateId|exact-name>] [--assignee me|<userId>] [--priority none|low|medium|high|urgent] [--estimate <number>] [--due-date <yyyy-mm-dd>] [--label <labelId-or-exact-name>]... [--parent <id> | --parent-current] [--write-id <uuid>] [--workspace <id>] [--json]
+orca linear create --title <title> [--body <text> | --body-file <path|->] [--team <key|id>] [--project <projectId-or-exact-name>] [--state <stateId|exact-name>] [--assignee me|<userId>] [--priority none|low|medium|high|urgent] [--estimate <number>] [--due-date <yyyy-mm-dd>] [--label <labelId-or-exact-name>]... [--parent <id> | --parent-current] [--write-id <uuid>] [--workspace <id>] [--json]
 ```
 
 ## Discovery And Triage
 
-Use discovery before mutating fields when you do not already have stable IDs:
+Use discovery before mutating fields when you do not already have stable IDs. Run only the command for the metadata you need; do not execute the entire block:
 
 ```bash
 orca linear team list --workspace all --json
 orca linear team states --team <key-or-id> --workspace <workspaceId> --json
 orca linear team labels --team <key-or-id> --workspace <workspaceId> --json
 orca linear team members --team <key-or-id> --workspace <workspaceId> --json
+orca linear project list --query <project-name> --workspace <workspaceId> --json
 ```
 
-Prefer IDs for automation. Names are accepted only when they exactly and uniquely match in the issue's team.
+Prefer IDs for automation. Names are accepted only when they exactly and uniquely match in the relevant team or workspace.
 
 `save-issue` matches Linear MCP's create-or-update shape: omit an issue target to create, or pass an id/`--current` to update. Repeated labels replace the complete label set. Use the literal `null` to clear assignee, estimate, due date, project, or parent.
 
