@@ -193,7 +193,7 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
     // Hidden meters avoid the CLI spawn; the separate promise keeps other providers responsive.
     const antigravityResultPromise = (
       antigravityUsageEnabled
-        ? fetchAntigravityRateLimits({ signal })
+        ? fetchAntigravityRateLimits({ signal, force: options?.force })
         : Promise.resolve(previousState.antigravity ?? antigravityUsageDisabledSnapshot())
     ).then(
       (value) => ({ status: 'fulfilled', value }) as const,

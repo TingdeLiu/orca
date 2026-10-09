@@ -37,9 +37,19 @@ const UNSUPPORTED_USAGE_COMMAND_REASON =
  */
 let usageCommandUnsupported = false
 
-/** Clears the unsupported latch. Tests only — a live process has no way back. */
+/**
+ * The last read that may have left agy waiting on a browser sign-in; replayed to automated polls.
+ *
+ * Why: when silent auth fails (signed out, or the token refresh cannot reach Google), agy's print
+ * mode opens an interactive OAuth page in the browser and blocks until killed. Polling again would
+ * open another tab every cycle, so only a user-directed read may spawn agy until one succeeds.
+ */
+let pausedRead: ProviderRateLimits | null = null
+
+/** Clears both latches. Tests only — a live process has no way back from the unsupported one. */
 export function resetAntigravityUsageSupportForTests(): void {
   usageCommandUnsupported = false
+  pausedRead = null
 }
 
 export type AntigravityUsageDependencies = {
@@ -53,6 +63,8 @@ export type AntigravityUsageDependencies = {
 
 export type FetchAntigravityRateLimitsOptions = AntigravityUsageDependencies & {
   signal?: AbortSignal
+  /** User-directed read; the only kind allowed to retry after a possible browser sign-in. */
+  force?: boolean
 }
 
 function unavailable(
@@ -114,6 +126,9 @@ export async function fetchAntigravityRateLimits(
   if (usageCommandUnsupported) {
     return unavailable(UNSUPPORTED_USAGE_COMMAND_REASON, 'usage-unavailable', now())
   }
+  if (pausedRead && !options.force) {
+    return { ...pausedRead, updatedAt: now() }
+  }
   const run = options.runCommand ?? runProcess
   const resolve = options.resolveCommand ?? resolveCommandOnLocalPath
   const platform = options.platform ?? process.platform
@@ -174,12 +189,17 @@ export async function fetchAntigravityRateLimits(
     return failed(spawnFailureMessage(error), 'cli-unavailable', now())
   }
 
+  // A finished read settles the pause; the sign-in outcomes below set it again.
+  pausedRead = null
+
   if (result.timedOut) {
-    return failed(
-      'Antigravity usage is not available. The Antigravity CLI did not answer in time.',
+    // Why pause on a timeout: a browser sign-in blocks agy without printing anything first.
+    pausedRead = failed(
+      'Antigravity usage is paused. The Antigravity CLI did not answer in time, which can mean it is waiting on a browser sign-in. Sign in with `agy`, then refresh usage.',
       'usage-unavailable',
       now()
     )
+    return pausedRead
   }
 
   const reading = parseAntigravityUsageStdout(result.stdout)
@@ -192,11 +212,12 @@ export async function fetchAntigravityRateLimits(
   if (!reading) {
     const failure = classifyAntigravityUsageFailure(`${result.stdout}\n${result.stderr}`)
     if (failure?.signedOut) {
-      return unavailable(
-        'Antigravity usage is not available. Sign in with `agy` to report this account’s quota.',
+      pausedRead = unavailable(
+        'Antigravity usage is not available. Sign in with `agy`, then refresh usage to report this account’s quota.',
         failure.failureKind,
         now()
       )
+      return pausedRead
     }
     if (failure) {
       return failed(

@@ -168,6 +168,17 @@ describe('Antigravity usage gating', () => {
     expect(service.getState().antigravity?.status).toBe('ok')
   })
 
+  it('marks a user-directed refresh as forced so it may retry a paused sign-in', async () => {
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 30))
+    const service = new RateLimitService()
+
+    await service.refresh()
+
+    expect(fetchAntigravityRateLimits).toHaveBeenCalledWith(
+      expect.objectContaining({ force: true })
+    )
+  })
+
   it('fetches when no resolver is configured', async () => {
     // Why default-on: the status bar shows Antigravity by default, so an unconfigured service
     // must still fill the meter rather than silently reporting nothing.
